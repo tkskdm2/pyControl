@@ -410,7 +410,7 @@ class AnalogTrigger(IO_object):
 
     def set_threshold(self, threshold, run_start=False):
         if not isinstance(threshold, int):
-            raise ValueError(f"Threshold must be an integer, got {type(threshold).__name__}.")
+            raise ValueError("Threshold must be an integer, got {}.".format(type(threshold).__name__))
         self.threshold = threshold
         self.reset_above_threshold = True
 
