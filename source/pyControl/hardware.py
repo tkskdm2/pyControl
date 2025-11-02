@@ -527,7 +527,8 @@ class Rsync(IO_object):
 
     def __init__(self, pin, event_name="rsync", mean_IPI=5000, pulse_dur=50):
         assert 0.1 * mean_IPI > pulse_dur, "0.1*mean_IPI must be greater than pulse_dur"
-        self.sync_pin = pyb.Pin(pin, pyb.Pin.OUT)
+        pins = [pin] if not isinstance(pin, list) else pin
+        self.sync_pins = [pyb.Pin(pin, pyb.Pin.OUT) for pin in pins]
         self.event_name = event_name
         self.pulse_dur = pulse_dur  # Sync pulse duration (ms)
         self.min_IPI = int(0.1 * mean_IPI)
@@ -543,7 +544,8 @@ class Rsync(IO_object):
             self._timer_callback()
 
     def _run_stop(self):
-        self.sync_pin.value(False)
+        for pin in self.sync_pins:
+            pin.value(False)
 
     def _timer_callback(self):
         if self.state:  # Pin high -> low, set timer for next pulse.
@@ -552,4 +554,5 @@ class Rsync(IO_object):
             timer.set(self.pulse_dur, fw.HARDW_TYP, "", self.ID)
             fw.data_output_queue.put(fw.Datatuple(fw.current_time, fw.EVENT_TYP, "s", self.event_ID))
         self.state = not self.state
-        self.sync_pin.value(self.state)
+        for pin in self.sync_pins:
+            pin.value(self.state)
