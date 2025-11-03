@@ -6,7 +6,7 @@
 
 from pyControl.utility import *
 from devices import *
-from pyControl.hardware import AnalogTrigger
+from pyControl.hardware import Analog_trigger
 
 # Variables.
 
@@ -18,13 +18,13 @@ v.bonus_velocity_threshold = 5000  # Encoder velocity that triggers bonus reward
 v.give_bonus = False  # Whether to give bonus reward.
 v.bonus_reward_duration = 50 * ms  # Time to add to reward duration if bonus is earned.
 
-running_trigger = AnalogTrigger(
+running_trigger = Analog_trigger(
     threshold=v.velocity_threshold,
     rising_event="started_running",
     falling_event="stopped_running",
 )
 
-bonus_trigger = AnalogTrigger(
+bonus_trigger = Analog_trigger(
     threshold=v.bonus_velocity_threshold,
     rising_event="bonus_earned",
 )
