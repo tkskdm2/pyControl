@@ -421,6 +421,7 @@ class Pycboard(Pyboard):
             micropython_version=self.micropython_version,
         )
         self.data_logger.reset()
+        self.timestamp = 0
 
     def get_states(self):
         """Return states as a dictionary {state_name: state_ID}"""
