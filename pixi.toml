@@ -1,0 +1,15 @@
+[workspace]
+name = "pycontrol-gui"
+channels = ["conda-forge"]
+platforms = ["win-64"]
+
+[dependencies]
+python = "3.11.*"
+numpy = "*"
+pyserial = "*"
+pyqtgraph = "*"
+pyqt = "*"
+
+[tasks]
+gui = "python pyControl_GUI.pyw"
+check-imports = "python -c \"import numpy, serial, pyqtgraph; print('Dependencies OK')\""
