@@ -1,0 +1,16 @@
+stateDiagram-v2
+  [*] --> ITI
+  ITI --> Gate: t∈[3.0–6.0] s
+  Gate --> PreCS: v<0.8 cm/s for 1.5 s & no-lick 0.4 s
+  Gate --> ITI: after 30.0 s
+  PreCS --> CueSelect
+  CueSelect --> CSplus: p=0.25
+  CueSelect --> CSminus: p=0.75
+  CSplus --> CSplusOutcome: after 2.0 s
+  CSplusOutcome --> US: p=0.75
+  CSplusOutcome --> ITI: p=0.25
+  US --> ITI
+  CSminus --> RewardDecision: after 2.0 s
+  RewardDecision --> Reward: no-lick 0.2 s & mean v(last 0.2 s) < 0.8 cm/s & p=0.4
+  RewardDecision --> ITI: else
+  Reward --> ITI

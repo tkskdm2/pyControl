@@ -129,6 +129,12 @@ class Variable_setter(QtWidgets.QWidget):
         parent_grid.grid_layout.addWidget(self.get_button, i, 3)
         parent_grid.grid_layout.addWidget(self.set_button, i, 4)
 
+        # Keep displayed value in sync with task variable outputs while running.
+        self.auto_update_timer = QtCore.QTimer(self)
+        self.auto_update_timer.setInterval(200)
+        self.auto_update_timer.timeout.connect(self.auto_update_from_sm_info)
+        self.auto_update_timer.start()
+
     def value_text_colour(self, color="gray"):
         self.value_str.setStyleSheet(f"color: {color};")
 
@@ -164,6 +170,19 @@ class Variable_setter(QtWidgets.QWidget):
         self.value_text_colour("black")
         self.value_str.setText(repr(self.board.sm_info.variables[self.v_name]))
         QtCore.QTimer.singleShot(1000, self.value_text_colour)
+
+    def auto_update_from_sm_info(self):
+        """Update displayed value automatically during framework run."""
+        if not self.board.framework_running:
+            return
+        if self.value_str.hasFocus():
+            return
+        if self.v_name not in self.board.sm_info.variables:
+            return
+        current_value = repr(self.board.sm_info.variables[self.v_name])
+        if self.value_str.text() != current_value:
+            self.value_str.setText(current_value)
+            self.value_text_colour("gray")
 
 
 # Summary variables dialog -----------------------------------------------------------

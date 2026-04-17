@@ -1,0 +1,6 @@
+stateDiagram-v2
+  [*] --> ITI
+  ITI --> FR1: after 1.0 s
+  FR1 --> Reward
+  FR1 --> ITI: after 0.6 s
+  Reward --> ITI: after 0.05 s

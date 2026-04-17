@@ -9,7 +9,9 @@ numpy = "*"
 pyserial = "*"
 pyqtgraph = "*"
 pyqt = "*"
+pyyaml = ">=6.0.3,<7"
 
 [tasks]
 gui = "python pyControl_GUI.pyw"
 check-imports = "python -c \"import numpy, serial, pyqtgraph; print('Dependencies OK')\""
+yaml_to_mermaid ="python project_pain/yaml_to_mermaid.py project_pain/training_phases_spec.yaml --outdir project_pain"

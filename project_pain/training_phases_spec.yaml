@@ -1,0 +1,392 @@
+project:
+  name: headfixed_treadmill_fear_reward
+  version: 0.5.0
+
+
+globals:
+  # タイミング関連パラメータ
+  timing:
+    smoothing_window_ms: 100  # 速度計算の平滑化ウィンドウ（ミリ秒）
+    iti_sec:                  # 試行間隔（Inter-Trial Interval）
+      min: 3.0                # 最小ITI時間（秒）
+      max: 6.0                # 最大ITI時間（秒）- 一様乱数で決定
+    
+    autowater_period_sec: 3.0 # p1 autowater段階の滴下間隔
+    criterion_licks_per_min: 60       # FR1へ進む条件
+    min_interval_sec: 0.6             # 連続出水防止
+    refractory_ms: 100                # 不応期（lick二重検出防止）
+    block_limit_drops: 10             # 30 sあたりの滴数上限
+    block_window_sec: 30
+
+    cs_dur_sec: 2.0           # CS-の持続時間（秒）
+    gate_hold_sec: 1.5        # ゲート条件を満たす必要がある時間（秒）
+    gate_timeout_sec: 30.0    # ゲート条件が満たされない場合のタイムアウト（秒）
+    pre_cs_no_lick_sec: 0.4   # CS提示前のリック禁止時間（秒）
+    pre_reward_no_lick_sec: 0.2  # 報酬判定前のリック禁止時間（秒）
+
+  # 閾値関連パラメータ
+  thresholds:
+    v_thresh_cm_s: 0.8        # 停止判定の速度閾値（cm/s）- これ以下で停止とみなす
+    v_break_cm_s: 1.2         # 中断判定の速度閾値（cm/s）- これ以上で中断とみなす
+    v_break_ratio: 1.6        # 中断閾値の倍率（v_thresh_cm_s × v_break_ratio）
+
+  # 確率関連パラメータ（フェーズ別）
+  probabilities:
+    # P2 (gate_only) - 確率設定なし（CSなし）
+    
+    # P3 (cs_minus_only) - CS-のみの学習フェーズ
+    p3_cs_plus: 0.0           # P3でのCS+選択確率（0% = CS+なし）
+    p3_cs_minus: 1.0          # P3でのCS-選択確率（100% = CS-のみ）
+    p3_reward_on_cs_minus: 0.4  # P3でのCS-完了時の報酬確率（40%）
+    
+    # P4 (conditioning) - 恐怖条件付けフェーズ
+    p4_cs_plus: 0.25          # P4でのCS+選択確率（25%）
+    p4_cs_minus: 0.75         # P4でのCS-選択確率（75%）
+    p4_reward_on_cs_minus: 0.4  # P4でのCS-完了時の報酬確率（40%）
+    
+    # CS+結果確率（プローブ試行用）
+    p_us_on_cs_plus: 0.75     # CS+でUSが提示される確率（75%）
+    p_us_omit_on_cs_plus: 0.25  # CS+でUSが省略される確率（25% = プローブ試行）
+
+  # 結果・報酬関連パラメータ
+  outcomes:
+    autowater_ul: 2            # ガイダンス期間の滴下量（µL）
+    reward_ul: 5            # 報酬量（マイクロリットル）- 水の給水量
+
+  # ポリシー・ルール関連パラメータ
+  policies:
+    cs_minus_allows_lick: true        # CS-期間中にリックを許可するか（true/false）
+    abort_if_move_during_cs_minus: true  # CS-中に動いたら中断するか（true/false）
+    cs_minus_abort_grace_sec: 0.25    # CS-開始後の猶予時間（秒）- この時間内は中断しない
+    cs_minus_abort_penalty_sec: 3.0   # CS-中断時のITI延長時間（秒）- ペナルティ
+    lockout_after_abort_sec: 0.0      # 中断後のロックアウト時間（秒）- 0で無効
+    always_us_on_cs_plus: true        # CS+では必ずUSを提示するか（true/false）
+    gate_timeout_penalty_sec: 2.0
+
+  # 不変条件（実験の安全性を保証するルール）
+  invariants:
+  - never(US during CS-)                    # CS-期間中にUSを提示してはいけない
+  - after(CS+, US) within timing.cs_dur_sec  # CS+の後は必ずUSを提示する
+  - reward only at CS- offset when guard satisfied  # 報酬はCS-終了時のみ、条件満たした場合のみ
+  # 自動閾値調整パラメータ
+  auto_thresholds:
+    v_thresh_percentile: 0.15  # 速度閾値の自動調整用パーセンタイル（15%）
+    v_thresh_min: 0.5          # 速度閾値の最小値（cm/s）
+    v_thresh_max: 2.0          # 速度閾値の最大値（cm/s）
+    
+  # ITI分布設定
+  iti_distribution:
+    type: uniform              # 分布の種類（uniform = 一様分布）
+    params:
+      min: 3.0                 # 最小ITI時間（秒）
+      max: 6.0                 # 最大ITI時間（秒）
+
+  # イベントコード（ログ記録用）
+  event_codes:
+    CSplus_on: 11             # CS+開始のイベントコード
+    CSminus_on: 12            # CS-開始のイベントコード
+    US_on: 21                 # US開始のイベントコード
+    Reward_on: 31             # 報酬提示のイベントコード
+    Abort_CSminus: 41         # CS-中断のイベントコード
+    Gate_timeout: 51          # ゲートタイムアウトのイベントコード
+
+  # 入出力ポート設定
+  io_map:
+    ttl_out_port: BNC1        # TTL出力ポート（刺激提示用）
+    lick_port: port_2          # リック検出ポート
+    encoder_port: port_1       # エンコーダー入力ポート（速度検出用）
+    valve_port: port_4.POW_A  # バルブ制御ポート（報酬配給用）
+
+  # 侵害受容性マッピングプロトコル（P_noci_map）
+  noci_map:
+    _doc: 侵害受容性強度マッピングプロトコル（P_noci_map）。CSや報酬なしで実行し、
+      厳密な不動化下で複数強度のUS刺激を提示する。
+    
+    # 刺激強度と選択確率の設定
+    intensities:
+      _doc: 刺激強度ラベルと選択確率。ラベルはUS状態名（US_I0, US_I1, US_I2, US_I3, US_I4）と
+        一致する必要がある。確率の合計は1.0でなければならない。
+      labels:
+      - I0                      # シャム刺激（対照）
+      - I1                      # 低強度刺激
+      - I2                      # 中低強度刺激
+      - I3                      # 中強度刺激
+      - I4                      # 高強度刺激
+      probabilities:
+        p_I0: 0.3              # シャム刺激の確率（30%）
+        p_I1: 0.25             # 低強度刺激の確率（25%）
+        p_I2: 0.2              # 中低強度刺激の確率（20%）
+        p_I3: 0.15             # 中強度刺激の確率（15%）
+        p_I4: 0.1              # 高強度刺激の確率（10%）
+    
+    # PreUSゲーティングパラメータ
+    gating:
+      _doc: P_noci_map用のPreUSゲーティングパラメータ。PreUS期間中の移動やリックは
+        試行を中断する（実装ではペナルティを追加）。
+      pre_us_hold_sec: 0.3     # PreUS期間中の停止保持時間（秒）
+      pre_us_no_lick_sec: 0.3  # PreUS期間中のリック禁止時間（秒）
+      gate_timeout_penalty_sec: 2.0  # ゲートタイムアウト時のペナルティ時間（秒）
+    
+    # 強刺激の制約設定
+    pacing:
+      _doc: 強刺激の制約設定（実装では間隔とセッション上限を強制）。
+      strong_labels:
+      - I3                      # 中強度刺激
+      - I4                      # 高強度刺激
+      strong_min_gap_trials: 5  # 強刺激間の最小試行間隔
+      max_strong_trials_per_session: 12  # セッションあたりの最大強刺激試行数
+    
+    # タイミング設定
+    timing:
+      _doc: ログ記録・解析用のUS/post-USタイミングヘルパー。
+      post_us_observe_sec: 1.0  # US後の観察時間（秒）
+    
+    sham_label: I0             # シャム刺激のラベル
+
+
+phases:
+- name: P1_lick_training
+  notes: 水スパウトへの接触形成。VI給水など。
+  # skip_mmd: true
+  fsm:
+    states:
+      - name: ITI
+        transitions:
+          - to: FR1 
+            after_sec: 1.0
+
+      - name: FR1         # 1 lick → 1 drop
+        transitions:
+          - to: Reward
+            label_text: "on Lick & refractory_ok"
+          - to: ITI
+            after_sec: "{{globals.timing.min_interval_sec}}"
+
+      - name: Reward
+        transitions:
+          - to: ITI
+            after_sec: 0.05
+
+
+- name: P2_gate_only
+  notes: 停止するとリワードが与えられることを学習させるフェイズ。CS-はなし。
+  overrides:
+    policies:
+      abort_if_move_during_cs_minus: true
+  fsm:
+    states:
+    - name: ITI
+      transitions:
+      - to: Gate
+        after_range_sec:
+          min: '{{globals.timing.iti_sec.min}}'
+          max: '{{globals.timing.iti_sec.max}}'
+    - name: Gate
+      transitions:
+      - to: Reward
+        guard_all:
+        - type: speed_below
+          threshold: '{{globals.thresholds.v_thresh_cm_s}}'
+          duration_sec: '{{globals.timing.gate_hold_sec}}'
+        - type: no_lick
+          duration_sec: '{{globals.timing.pre_cs_no_lick_sec}}'
+      - to: ITI
+        after_sec: '{{globals.timing.gate_timeout_sec}}'
+    - name: Reward
+      transitions:
+      - to: ITI
+
+- name: P3_noci_map
+  notes: 侵害受容性マッピングプロトコル。複数強度のUS刺激を厳密な不動化下で提示。
+  fsm:
+    states:
+    - name: ITI
+      transitions:
+      - to: Gate
+        after_range_sec:
+          min: '{{globals.timing.iti_sec.min}}'
+          max: '{{globals.timing.iti_sec.max}}'
+    
+    - name: Gate
+      transitions:
+      - to: PreUS
+        guard_all:
+        - type: speed_below
+          threshold: '{{globals.thresholds.v_thresh_cm_s}}'
+          duration_sec: '{{globals.timing.gate_hold_sec}}'
+        - type: no_lick
+          duration_sec: '{{globals.timing.pre_cs_no_lick_sec}}'
+      - to: ITI
+        after_sec: '{{globals.timing.gate_timeout_sec}}'
+    
+    - name: PreUS
+      transitions:
+      - to: IntensitySelect
+        guard_all:
+        - type: speed_below
+          threshold: '{{globals.thresholds.v_thresh_cm_s}}'
+          duration_sec: '{{globals.noci_map.gating.pre_us_hold_sec}}'
+        - type: no_lick
+          duration_sec: '{{globals.noci_map.gating.pre_us_no_lick_sec}}'
+      - to: ITI
+        after_sec: 0.5
+    
+    - name: IntensitySelect
+      transitions:
+      - to: US_I0
+        prob: '{{globals.noci_map.intensities.probabilities.p_I0}}'
+      - to: US_I1
+        prob: '{{globals.noci_map.intensities.probabilities.p_I1}}'
+      - to: US_I2
+        prob: '{{globals.noci_map.intensities.probabilities.p_I2}}'
+      - to: US_I3
+        prob: '{{globals.noci_map.intensities.probabilities.p_I3}}'
+      - to: US_I4
+        prob: '{{globals.noci_map.intensities.probabilities.p_I4}}'
+    
+    - name: US_I0
+      transitions:
+      - to: ITI
+        after_sec: 0.01
+    
+    - name: US_I1
+      transitions:
+      - to: ITI
+        after_sec: 0.01
+    
+    - name: US_I2
+      transitions:
+      - to: ITI
+        after_sec: 0.01
+    
+    - name: US_I3
+      transitions:
+      - to: ITI
+        after_sec: 0.01
+    
+    - name: US_I4
+      transitions:
+      - to: ITI
+        after_sec: 0.01
+
+- name: P4_cs_minus_only
+  notes: CS-のみの学習フェイズ。CS+はなし。
+  overrides:
+    policies:
+      abort_if_move_during_cs_minus: true
+  fsm:
+    states:
+    - name: ITI
+      transitions:
+      - to: Gate
+        after_range_sec:
+          min: '{{globals.timing.iti_sec.min}}'
+          max: '{{globals.timing.iti_sec.max}}'
+    - name: Gate
+      transitions:
+      - to: PreCS
+        guard_all:
+        - type: speed_below
+          threshold: '{{globals.thresholds.v_thresh_cm_s}}'
+          duration_sec: '{{globals.timing.gate_hold_sec}}'
+        - type: no_lick
+          duration_sec: '{{globals.timing.pre_cs_no_lick_sec}}'
+      - to: ITI
+        after_sec: '{{globals.timing.gate_timeout_sec}}'
+    - name: PreCS
+      transitions:
+      - to: CSminus
+    - name: CSminus
+      transitions:
+      - to: ITI
+        after_sec: '{{globals.policies.cs_minus_abort_grace_sec}}'
+        guard_all:
+        - type: speed_above
+          threshold: '{{globals.thresholds.v_break_cm_s}}'
+          duration_sec: 0.1
+
+        abort: true
+      - to: RewardDecision
+        after_sec: '{{globals.timing.cs_dur_sec}}'
+    - name: RewardDecision
+      transitions:
+      - to: Reward
+        guard_all:
+        - type: no_lick
+          duration_sec: '{{globals.timing.pre_reward_no_lick_sec}}'
+        - type: mean_speed_below
+          window_sec: '{{globals.timing.pre_reward_no_lick_sec}}'
+          threshold: '{{globals.thresholds.v_thresh_cm_s}}'
+        prob: '{{globals.probabilities.p3_reward_on_cs_minus}}'
+      - to: ITI
+        else: true
+    - name: Reward
+      transitions:
+      - to: ITI
+      
+- name: P5_conditioning
+  notes: CS+(恐怖学習)を進行させるフェイズ。
+  overrides:
+    policies:
+      abort_if_move_during_cs_minus: false
+  fsm:
+    states:
+    - name: ITI
+      transitions:
+      - to: Gate
+        after_range_sec:
+          min: '{{globals.timing.iti_sec.min}}'
+          max: '{{globals.timing.iti_sec.max}}'
+    - name: Gate
+      transitions:
+      - to: PreCS
+        guard_all:
+        - type: speed_below
+          threshold: '{{globals.thresholds.v_thresh_cm_s}}'
+          duration_sec: '{{globals.timing.gate_hold_sec}}'
+        - type: no_lick
+          duration_sec: '{{globals.timing.pre_cs_no_lick_sec}}'
+      - to: ITI
+        after_sec: '{{globals.timing.gate_timeout_sec}}'
+    - name: PreCS
+      transitions:
+      - to: CueSelect
+    - name: CueSelect
+      transitions:
+      - to: CSplus
+        prob: '{{globals.probabilities.p4_cs_plus}}'
+      - to: CSminus
+        prob: '{{globals.probabilities.p4_cs_minus}}'
+    - name: CSplus
+      transitions:
+      - to: CSplusOutcome
+        after_sec: '{{globals.timing.cs_dur_sec}}'
+    - name: CSplusOutcome
+      transitions:
+      - to: US
+        prob: '{{globals.probabilities.p_us_on_cs_plus}}'
+      - to: ITI
+        prob: '{{globals.probabilities.p_us_omit_on_cs_plus}}'
+        label_text: US omission (probe)
+    - name: US
+      transitions:
+      - to: ITI
+    - name: CSminus
+      transitions:
+      - to: RewardDecision
+        after_sec: '{{globals.timing.cs_dur_sec}}'
+    - name: RewardDecision
+      transitions:
+      - to: Reward
+        guard_all:
+        - type: no_lick
+          duration_sec: '{{globals.timing.pre_reward_no_lick_sec}}'
+        - type: mean_speed_below
+          window_sec: '{{globals.timing.pre_reward_no_lick_sec}}'
+          threshold: '{{globals.thresholds.v_thresh_cm_s}}'
+        prob: '{{globals.probabilities.p4_reward_on_cs_minus}}'
+      - to: ITI
+        else: true
+    - name: Reward
+      transitions:
+      - to: ITI

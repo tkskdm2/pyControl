@@ -1,0 +1,17 @@
+stateDiagram-v2
+  [*] --> ITI
+  ITI --> Gate: t∈[3.0–6.0] s
+  Gate --> PreUS: v<0.8 cm/s for 1.5 s & no-lick 0.4 s
+  Gate --> ITI: after 30.0 s
+  PreUS --> IntensitySelect: v<0.8 cm/s for 0.3 s & no-lick 0.3 s
+  PreUS --> ITI: after 0.5 s
+  IntensitySelect --> US_I0: p=0.3
+  IntensitySelect --> US_I1: p=0.25
+  IntensitySelect --> US_I2: p=0.2
+  IntensitySelect --> US_I3: p=0.15
+  IntensitySelect --> US_I4: p=0.1
+  US_I0 --> ITI: after 0.01 s
+  US_I1 --> ITI: after 0.01 s
+  US_I2 --> ITI: after 0.01 s
+  US_I3 --> ITI: after 0.01 s
+  US_I4 --> ITI: after 0.01 s
