@@ -11,16 +11,14 @@ globals:
       min: 3.0                # 最小ITI時間（秒）
       max: 6.0                # 最大ITI時間（秒）- 一様乱数で決定
     
-    autowater_period_sec: 3.0 # p1 autowater段階の滴下間隔
-    criterion_licks_per_min: 60       # FR1へ進む条件
-    min_interval_sec: 0.6             # 連続出水防止
-    refractory_ms: 100                # 不応期（lick二重検出防止）
-    block_limit_drops: 10             # 30 sあたりの滴数上限
+    min_reward_interval_sec: 0.6             # 連続出水防止
+    lick_refractory_ms: 100                # 不応期（lick二重検出防止）
+    block_reward_limit: 10             # 30 sあたりの滴数上限
     block_window_sec: 30
 
     cs_dur_sec: 2.0           # CS-の持続時間（秒）
     gate_hold_sec: 1.5        # ゲート条件を満たす必要がある時間（秒）
-    gate_timeout_sec: 30.0    # ゲート条件が満たされない場合のタイムアウト（秒）
+    gate_timeout_sec: 1.0    # ゲート条件が満たされない場合のタイムアウト（秒）
     pre_cs_no_lick_sec: 0.4   # CS提示前のリック禁止時間（秒）
     pre_reward_no_lick_sec: 0.2  # 報酬判定前のリック禁止時間（秒）
 
@@ -160,7 +158,7 @@ phases:
           - to: Reward
             label_text: "on Lick & refractory_ok"
           - to: ITI
-            after_sec: "{{globals.timing.min_interval_sec}}"
+            after_sec: "{{globals.timing.min_reward_interval_sec}}"
 
       - name: Reward
         transitions:
