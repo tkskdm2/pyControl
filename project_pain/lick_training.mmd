@@ -1,0 +1,9 @@
+stateDiagram-v2
+  [*] --> ITI
+  ITI --> LickWait: t in [3.0-6.0] s
+
+  LickWait --> Reward: lick detected
+  LickWait --> ITI: after 3.0 s (no lick)
+
+  Reward --> LickWait: after 1.0 s if lick occurred
+  Reward --> ITI: after 1.0 s if no lick

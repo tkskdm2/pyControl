@@ -12,14 +12,14 @@ try:
     v.using_local_hardware_fallback = False
 except Exception:
     board = Breakout_1_2()
-    GateLED = Digital_output(board.port_2.POW_A)
+    RewardLED = Digital_output(board.port_2.POW_A)
     RewardValve = Digital_output(board.port_2.POW_B)
     v.using_local_hardware_fallback = True
 
 # Manual reward task.
 #
 # Trigger the event "manual_reward" from the GUI to deliver one reward:
-# 1) GateLED on for 1 second
+# 1) RewardLED on for 1 second
 # 2) RewardValve on for 0.05 second
 
 states = ["wait_for_trigger", "gate_on", "reward_on"]
@@ -36,22 +36,14 @@ def run_start():
     # Show the initial count in GUI/log.
     print_variables(["button_click_count"])
     if v.using_local_hardware_fallback:
-        warning("Hardware definition was not loaded; using local fallback for GateLED/RewardValve.")
+        warning("Hardware definition was not loaded; using local fallback for RewardLED/RewardValve.")
 
 
 def wait_for_trigger(event):
     if event == "manual_reward":
         v.button_click_count += 1
         print_variables(["button_click_count"])
-        goto_state("gate_on")
-
-
-def gate_on(event):
-    if event == "entry":
-        GateLED.on()
-        timed_goto_state("reward_on", 1 * second)
-    elif event == "exit":
-        GateLED.off()
+        goto_state("reward_on")
 
 
 def reward_on(event):

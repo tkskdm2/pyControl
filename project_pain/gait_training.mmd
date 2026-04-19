@@ -1,0 +1,8 @@
+stateDiagram-v2
+  [*] --> ITI
+  ITI --> Gate: t in [3.0-6.0] s
+
+  Gate --> Reward: speed < 8 mm/s for Gate_length && no lick in last 0.4 s
+  Gate --> ITI: Gate failure (speed >= 8 mm/s)
+
+  Reward --> ITI: lick detected
